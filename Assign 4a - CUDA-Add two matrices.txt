@@ -1,0 +1,47 @@
+%%cu
+#include<stdio.h>
+#include<cuda.h>
+
+__global__ void arradd(int *da,int *db, int *dc)    //kernel definition
+{
+  int id=blockIdx.x*blockDim.x+threadIdx.x; 
+  dc[id]=da[id]+db[id];
+}
+
+int main()
+{
+    # define len 6
+    int ha[len]={1,2,3,4,5,6};
+    int hb[len]={2,3,4,5,6,7};
+    int hc[len];
+    
+    int *da,*db,*dc;
+ 
+ /* cudaMalloc() allocates memory from Global memory on GPU */
+    cudaMalloc((void **)&da,len*sizeof(int));
+    cudaMalloc((void **)&db,len*sizeof(int));
+    cudaMalloc((void **)&dc,len*sizeof(int));
+
+/* cudaMemcpy() copies the contents from destination to source. Here destination is GPU(da,db) and source is CPU(ha,hb) */
+    cudaMemcpy(da,ha,len*sizeof(int),cudaMemcpyHostToDevice);
+    cudaMemcpy(db,hb,len*sizeof(int),cudaMemcpyHostToDevice);
+ 
+/* call to kernel. Here 1 is number of blocks, len is the number of threads per block and da,db,dc are the arguments */ 
+    arradd<<<1,len>>>(da,db,dc); 
+
+/* Here we are copying content from GPU(Device) to CPU(Host) */
+    cudaMemcpy(hc,dc,len*sizeof(int),cudaMemcpyDeviceToHost);
+    
+printf("\nSum of two arrays:\n ");
+    for(int i=0;i<6;i++)
+    {
+        printf("%d\t",hc[i]);
+    }
+
+/* Free the memory allocated to pointers d,e,f */
+    cudaFree(da);
+    cudaFree(db);
+    cudaFree(dc);
+
+    return 0;
+}

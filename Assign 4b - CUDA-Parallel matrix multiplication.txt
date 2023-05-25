@@ -1,0 +1,78 @@
+%%cu
+//Parallel Matrix multiplication with shared memory
+#include<stdio.h>
+#include<cuda.h>
+#define row1 2 /* Number of rows of first matrix */
+#define col1 3 /* Number of columns of first matrix */
+#define row2 3 /* Number of rows of second matrix */
+#define col2 2 /* Number of columns of second matrix */
+
+__global__ void matproductsharedmemory(int *da,int *db, int *dc)
+{
+    int x=blockIdx.x;
+    int y=blockIdx.y;
+    __shared__ int p[col1];
+
+    int k=threadIdx.x;
+
+    dc[col2*y+x]=0;
+
+    p[k]=da[col1*y+k]*db[col2*k+x];
+    __syncthreads();
+
+    for(int t=0;t<col1;t++)
+    dc[col2*y+x]=dc[col2*y+x]+p[t];
+}
+
+int main()
+{
+    int ha[row1][col1];
+    int hb[row2][col2];
+    int hc[row1][col2];
+    int *da,*db,*dc;
+    int i,j;
+
+    ha[0][0]=1;
+    ha[0][1]=2;
+    ha[0][2]=3;
+    ha[1][0]=4;
+    ha[1][1]=5;
+    ha[1][2]=6;
+ 
+    hb[0][0]=1;
+    hb[0][1]=2;
+    hb[1][0]=3;
+    hb[1][1]=4;
+    hb[2][0]=5;
+    hb[2][1]=6;
+ 
+
+
+    cudaMalloc((void **)&da,row1*col1*sizeof(int));
+    cudaMalloc((void **)&db,row2*col2*sizeof(int));
+    cudaMalloc((void **)&dc,row1*col2*sizeof(int));
+
+    cudaMemcpy(da,ha,row1*col1*sizeof(int),cudaMemcpyHostToDevice);
+    cudaMemcpy(db,hb,row2*col2*sizeof(int),cudaMemcpyHostToDevice);
+
+    dim3 grid(col2,row1);
+    /* Here we are defining two dimensional Grid(collection of blocks) structure. Syntax is dim3 grid(no. of columns,no. of rows) */
+
+    matproductsharedmemory<<<grid,col1>>>(da,db,dc);
+
+    cudaMemcpy(hc,dc,row1*col2*sizeof(int),cudaMemcpyDeviceToHost);
+
+    printf("\n Product of two matrices:\n ");
+    for(i=0;i<row1;i++){
+        for(j=0;j<col2;j++){
+              printf("%d\t",hc[i][j]);
+        }
+        printf("\n");
+    }
+
+    cudaFree(da);
+    cudaFree(db);
+    cudaFree(dc);
+
+    return 0;
+}
